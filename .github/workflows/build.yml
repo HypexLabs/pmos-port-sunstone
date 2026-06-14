@@ -1,4 +1,4 @@
-name: Build kernel and device package
+name: Build kernel
 
 on:
   push:
@@ -12,14 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [aarch64]
+        arch: [arm64]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-          fetch-depth: 0
+          fetch-depth: 1
+
+      - name: Checkout kernel source
+        run: |
+          cd kernel-source
+          git fetch --depth 1 origin meme
+          git checkout meme
 
       - name: Install dependencies
         run: |
@@ -30,39 +36,50 @@ jobs:
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
             clang lld llvm
 
-      - name: Install pmbootstrap
-        run: |
-          pip install pmbootstrap
-
-      - name: Initialize pmbootstrap
-        run: |
-          mkdir -p /tmp/pmbootstrap-work
-          pmbootstrap init \
-            --work /tmp/pmbootstrap-work \
-            --non-interactive \
-            --aports "${{ github.workspace }}" \
-            --channel edge \
-            --vendor xiaomi \
-            --device sunstone
-
       - name: Build kernel
         run: |
-          pmbootstrap build linux-xiaomi-sunstone --arch=${{ matrix.arch }}
+          cd kernel-source
+          cp ../kernel/linux-xiaomi-sunstone/config/vendor/holi_defconfig arch/arm64/configs/vendor/holi_defconfig
+          make ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            vendor/holi_defconfig
+          make ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            -j$(nproc)
 
-      - name: Build device package
+      - name: Package boot.img
         run: |
-          pmbootstrap build device-xiaomi-sunstone --arch=${{ matrix.arch }}
+          mkdir -p output
+          # Compress kernel image
+          if [ -f kernel-source/arch/arm64/boot/Image.gz-dtb ]; then
+            cp kernel-source/arch/arm64/boot/Image.gz-dtb output/
+          elif [ -f kernel-source/arch/arm64/boot/Image.gz ]; then
+            cp kernel-source/arch/arm64/boot/Image.gz output/
+          elif [ -f kernel-source/arch/arm64/boot/Image ]; then
+            cp kernel-source/arch/arm64/boot/Image output/
+          fi
+          # Copy DTBs
+          find kernel-source/arch/arm64/boot/dts -name "*.dtb" -exec cp {} output/ \;
+          # Copy modules
+          make -C kernel-source ARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            LLVM=1 \
+            INSTALL_MOD_PATH=output/modules modules_install 2>/dev/null || true
+          ls -la output/
 
-      - name: Upload kernel package
+      - name: Upload kernel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-linux-xiaomi-sunstone-${{ matrix.arch }}
-          path: /tmp/pmbootstrap-work/packages/pmos/${{ matrix.arch }}/linux-xiaomi-sunstone-*.apk
-          retention-days: 30
-
-      - name: Upload device package
-        uses: actions/upload-artifact@v4
-        with:
-          name: device-xiaomi-sunstone-${{ matrix.arch }}
-          path: /tmp/pmbootstrap-work/packages/pmos/${{ matrix.arch }}/device-xiaomi-sunstone-*.apk
+          name: sunstone-kernel-${{ matrix.arch }}
+          path: output/
           retention-days: 30
