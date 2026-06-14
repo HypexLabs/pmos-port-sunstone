@@ -36,24 +36,31 @@ jobs:
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
             clang lld llvm
 
-      - name: Build kernel
+      - name: Prepare kernel config
         run: |
           cd kernel-source
           cp ../kernel/linux-xiaomi-sunstone/config/vendor/holi_defconfig arch/arm64/configs/vendor/holi_defconfig
+          # Disable KernelSU (not in kernel source tree)
+          sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/' arch/arm64/configs/vendor/holi_defconfig
+          sed -i '/CONFIG_KSU_/d' arch/arm64/configs/vendor/holi_defconfig
+
+      - name: Build kernel
+        run: |
+          cd kernel-source
           make ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             LLVM=1 \
             LLVM_IAS=1 \
-            vendor/holi_defconfig
+            vendor/holi_defconfig 2>&1
           make ARCH=arm64 \
             CC=clang \
             CLANG_TRIPLE=aarch64-linux-gnu- \
             CROSS_COMPILE=aarch64-linux-gnu- \
             LLVM=1 \
             LLVM_IAS=1 \
-            -j$(nproc)
+            -j$(nproc) 2>&1
 
       - name: Package boot.img
         run: |
