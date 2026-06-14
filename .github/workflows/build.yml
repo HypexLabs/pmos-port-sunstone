@@ -43,6 +43,9 @@ jobs:
           # Disable KernelSU (not in kernel source tree)
           sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/' arch/arm64/configs/vendor/holi_defconfig
           sed -i '/CONFIG_KSU_/d' arch/arm64/configs/vendor/holi_defconfig
+          # Create empty KernelSU Kconfig to satisfy source directive
+          mkdir -p drivers/kernelsu
+          touch drivers/kernelsu/Kconfig
 
       - name: Build kernel
         run: |
