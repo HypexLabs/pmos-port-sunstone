@@ -23,9 +23,11 @@ jobs:
 
       - name: Checkout kernel source
         run: |
-          cd kernel-source
-          git fetch --depth 1 origin meme
-          git checkout meme
+          # Remove previous submodule
+          rm -rf kernel-source
+          # Use official MiCode kernel source for moonstone (same SoC as sunstone)
+          git clone --depth 1 --branch moonstone-s-oss https://github.com/MiCode/Xiaomi_Kernel_OpenSource kernel-source
+          ls -la kernel-source/
 
       - name: Install dependencies
         run: |
@@ -34,7 +36,7 @@ jobs:
             bc bison flex libelf-dev libssl-dev \
             python3 perl cpio xz-utils \
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
-            clang lld llvm
+            clang lld llvm device-tree-compiler
 
       - name: Prepare kernel config
         run: |
