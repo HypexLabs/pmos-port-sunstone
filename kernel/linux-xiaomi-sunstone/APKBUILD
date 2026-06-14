@@ -1,0 +1,71 @@
+# Kernel package for Xiaomi Redmi Note 12 5G (sunstone)
+# Uses downstream kernel from Xiaomi GPL release
+
+pkgname=linux-xiaomi-sunstone
+pkgver=5.4.301
+pkgrel=0
+pkgdesc="Xiaomi Redmi Note 12 5G downstream kernel"
+arch="aarch64"
+license="GPL-2.0-only"
+url="https://github.com/anth-unv-gm/android_kernel_xiaomi_stone"
+
+# Use the community kernel fork with sunstone support
+_source_repo="https://github.com/anth-unv-gm/android_kernel_xiaomi_stone"
+_source_branch="meme"
+
+depends=""
+makedepends="bc bison devicepkg-dev elfutils-dev flex installkernel linux-headers openssl-dev perl python3"
+options="!check !strip !tracedeps"
+subpackages="$pkgname-modules:_modules"
+
+# Kernel config - vendor defconfig for holi platform
+_config="vendor/holi_defconfig"
+_flavor="xiaomi-sunstone"
+
+source="
+	$pkgname-$pkgver.tar.gz::${_source_repo}/archive/${_source_branch}.tar.gz
+	kernel config:config
+"
+builddir="$srcdir/${_source_repo##*/}-${_source_branch}"
+
+prepare() {
+	cd "$builddir"
+	cp "$srcdir/config" ".config"
+	# Apply any needed patches here
+}
+
+build() {
+	cd "$builddir"
+	unset LDFLAGS
+	make ARCH=arm64 \
+		CC=clang \
+		CLANG_TRIPLE=aarch64-linux-gnu- \
+		CROSS_COMPILE=aarch64-linux-gnu- \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		-j$(nproc)
+}
+
+package() {
+	cd "$builddir"
+	install -D "$builddir/arch/arm64/boot/Image.gz-dtb" \
+		"$pkgdir/boot/vmlinuz-$_flavor"
+}
+
+_modules() {
+	cd "$builddir"
+	make ARCH=arm64 \
+		CC=clang \
+		CLANG_TRIPLE=aarch64-linux-gnu- \
+		CROSS_COMPILE=aarch64-linux-gnu- \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		INSTALL_MOD_PATH="$subpkgdir" \
+		modules_install
+	rm -f "$subpkgdir/lib/modules"/*/{build,source}
+}
+
+sha512sums="
+	SKIP
+	SKIP
+"

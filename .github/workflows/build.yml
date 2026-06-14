@@ -1,0 +1,68 @@
+name: Build kernel and device package
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-kernel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex libelf-dev libssl-dev \
+            python3 perl cpio xz-utils \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            clang lld llvm
+
+      - name: Install pmbootstrap
+        run: |
+          pip install pmbootstrap
+
+      - name: Initialize pmbootstrap
+        run: |
+          mkdir -p /tmp/pmbootstrap-work
+          pmbootstrap init \
+            --work /tmp/pmbootstrap-work \
+            --non-interactive \
+            --aports "${{ github.workspace }}" \
+            --channel edge \
+            --vendor xiaomi \
+            --device sunstone
+
+      - name: Build kernel
+        run: |
+          pmbootstrap build linux-xiaomi-sunstone --arch=${{ matrix.arch }}
+
+      - name: Build device package
+        run: |
+          pmbootstrap build device-xiaomi-sunstone --arch=${{ matrix.arch }}
+
+      - name: Upload kernel package
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-linux-xiaomi-sunstone-${{ matrix.arch }}
+          path: /tmp/pmbootstrap-work/packages/pmos/${{ matrix.arch }}/linux-xiaomi-sunstone-*.apk
+          retention-days: 30
+
+      - name: Upload device package
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-xiaomi-sunstone-${{ matrix.arch }}
+          path: /tmp/pmbootstrap-work/packages/pmos/${{ matrix.arch }}/device-xiaomi-sunstone-*.apk
+          retention-days: 30

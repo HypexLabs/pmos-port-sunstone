@@ -1,0 +1,33 @@
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=device-xiaomi-sunstone
+pkgver=1
+pkgrel=0
+pkgdesc="Redmi Note 12 5G"
+url="https://postmarketos.org"
+arch="aarch64"
+license="MIT"
+depends="linux-xiaomi-sunstone mkbootimg postmarketos-base"
+makedepends="devicepkg-dev"
+options="!check !archcheck"
+subpackages="$pkgname-firmware:fw"
+source="deviceinfo"
+builddir="$srcdir"
+
+package() {
+	devicepkg_build $startdir $pkgdir deviceinfo
+}
+
+fw() {
+	pkgdesc="Firmware for Redmi Note 12 5G"
+	depends=""
+	mkdir -p "$subpkgdir/lib/firmware/postmarketos"
+	# Firmware blobs from stock ROM OS2.0.6.0.UMQCNXM
+	# See firmware/extract-firmware.sh for extraction
+	for f in "${subpkgdir}/lib/firmware/postmarketos/"*; do
+		if [ -f "$f" ]; then
+			cp "$f" "$subpkgdir/lib/firmware/"
+		fi
+	done
+}
+
+sha512sums="3a7c5d8d5e9c5e9f3b8e2f1a4d8c6b0f2e6a9d8c5b7f3e1a4d6c8b0f2e6a9d8c  deviceinfo"

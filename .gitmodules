@@ -1,0 +1,3 @@
+[submodule "kernel-source"]
+	path = kernel-source
+	url = https://github.com/anth-unv-gm/android_kernel_xiaomi_stone
